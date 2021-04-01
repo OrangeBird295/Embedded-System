@@ -1,0 +1,47 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <BH1750.h>
+#define sw D1
+BH1750 lightMeter;
+int Posi = 0;
+int x;
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+void setup(){
+  Serial.begin(9600);
+  lcd.begin();
+  lcd.backlight();
+  pinMode(sw, INPUT);
+  Serial.begin(9600);
+  Wire.begin();
+  lightMeter.begin();
+  //Serial.println(F("BH1750 Test"));
+}
+
+void loop() {
+  x = digitalRead(sw);
+  if(x == 0){
+    delay(500);
+    lcd.clear();
+    delay(500);
+    Posi+=1;
+  }
+  if(Posi == 0){
+    lcd.setCursor(0, 0);
+    lcd.print(String("SUPHACHOKE"));
+    lcd.setCursor(0 ,1);
+    lcd.print(String("WATTHANAPIMOL"));
+    delay(200);
+  }
+  if(Posi == 1){
+    //lcd.clear();
+    float lux = lightMeter.readLightLevel();
+    Serial.println(lux);
+    lcd.setCursor(0, 0);
+    lcd.print(String("Light: ")+lux+String(" lx"));
+    delay(200);
+  }
+  if(Posi == 2){
+    Posi = 0;
+  }
+}
+

@@ -1,0 +1,69 @@
+#include <Wire.h>               // Include I2C bus library
+#include <LiquidCrystal_I2C.h>  // Include LCD-I2C bus library
+#define TRIGPIN D7
+#define ECHOPIN D8
+#define sw D1
+int Posi = 0;
+int x;
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+void setup() {
+  Serial.begin(9600);
+  pinMode(TRIGPIN, OUTPUT);
+  pinMode(ECHOPIN, INPUT);
+  lcd.begin();
+  lcd.backlight();
+  pinMode(sw ,INPUT);
+}
+void loop()
+{
+  int  distance, cm, inch;
+  digitalWrite(TRIGPIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIGPIN, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(TRIGPIN, LOW);
+ 
+
+  x = digitalRead(sw);
+  if(x == 0){
+    delay(500);
+    lcd.clear();
+    delay(500);
+    Posi+=1;
+  }
+  if(Posi == 0){
+     distance = pulseIn(ECHOPIN, HIGH);
+    cm = microsecondsToCentimeters(distance);
+    lcd.setCursor(0, 0);
+    lcd.print(String("distance"));
+    lcd.setCursor(7, 1);
+    lcd.print(cm + String("Cm"));
+    Serial.print(cm);
+    Serial.println("cm");
+    delay(200);
+  }
+  if(Posi == 1){
+     distance = pulseIn(ECHOPIN, HIGH);
+    inch = microsecondsToInch(distance);
+    lcd.setCursor(0, 0);
+    lcd.print(String("distance"));
+    lcd.setCursor(7, 1);
+    lcd.print(inch + String("Inch"));
+    Serial.print(inch);
+    Serial.println("inch");
+    delay(200);
+  }
+  if(Posi == 2){
+    Posi = 0;
+  }
+
+}
+int  microsecondsToCentimeters(long microseconds)
+{
+  return microseconds / 29 / 2;
+}
+int  microsecondsToInch(long microseconds)
+{
+  return microseconds / 74 / 2;
+}
