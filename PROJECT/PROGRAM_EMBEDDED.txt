@@ -1,0 +1,108 @@
+#define BLYNK_PRINT Serial // สำหรับ print monitor
+#include <ESP8266WiFi.h> //  ไลบรารี่ของชิป ESP8266 WiFi
+#include <BlynkSimpleEsp8266.h> // ไลบรารี่ส่วนชเื่อมต่อแอพ Blynk
+//#include <SimpleTimer.h>
+#include <TridentTD_LineNotify.h>
+
+int LED2 = D5; //   ต่อกับ LED สีเขียว แจ้งเตือนความชื้นสูงกว่าค่าที่กำหนด
+int LED1 = D6; //   ต่อกับ LED สีแดง แจ้งเตือนความชื้นต่ำหรือต่ำกว่าค่าที่กำหนด
+int Buttonstatus;
+int Alarmstatus;
+
+int sensorPin = A0; //พอร์ตที่ต่อกับ sensor ขา AO (data out)  
+int Relay1 = D2;
+int sensorValue;
+int MoistureValue;
+int MoistureHighLimit;
+int MoistureLowLimit;
+
+
+
+char auth[] = "A2HPUOVrg5Kwy2el7f0eycFIR4YHiSvA"; 
+char ssid[] = "PIMOL-DEE_2.4G"; 
+char pass[] = "18111811"; 
+#define LINE_TOKEN "8YduL9gU03Utp5LkTlZT32m5S02zufaSdicXjSt9JZO" 
+
+SimpleTimer timer; // ประกาศให้การนับเวลาใช้ไลบรารี่ SimpleTimer
+WidgetLED Widgetled1(V6); //  LED ที่หน่้าจอแสดว่าความชื้นต่ำเกิน
+WidgetLED Widgetled2(V7); //  LED ที่หน่้าจอแสดงว่าความชื้นสูงเกิน
+
+
+void setup() {
+ //pinMode(Relay1, OUTPUT); // ต่อโหลดเป็น LED ตัวอย่างอุปกรณ์ลดความชื้น
+ pinMode(Relay1, OUTPUT); // ต่อโหลดปั๊มน้ำ เพ่ิมเพิ่มความชื้น
+ pinMode(LED1,OUTPUT); //  ไฟเตือนแสดงความชื้นต่ำ
+ pinMode(LED2,OUTPUT); //  ไฟเตือนแสดงความขื้นสูง
+  delay(500);
+  Serial.begin(9600);
+  Serial.println("\Starting");
+  Blynk.begin(auth, ssid, pass, "blynk.iot-cm.com", 8080); // ให้ใช้ค่า Authen Key และ WiFi ตามที่ประกาสตัวแปรไว้
+  LINE.setToken(LINE_TOKEN);
+//  timer.setInterval(1000L, TempDisplay); // 
+  timer.setInterval(2000L, MoistureControl); // 
+}
+
+
+void MoistureControl()
+{
+
+ sensorValue = analogRead(sensorPin); // อ่านค่าจากเซนเซอร์วัดความชื้น
+ MoistureValue = map(sensorValue, 1023, 0, 0, 100); // ให้เทียบค่า Analog ที่วัดได้ 0-1023 ออกมาเป็นย่านความชื้น 0-100%
+ Blynk.virtualWrite(V5, ceil(MoistureValue)); // แสดวค่าความขื้นที่ Widget Guage
+ Serial.println("Moisture Value : "); // แสดง์ค่าความชื้นออกหน้าจอคอมพิวเตอร์ผ่านเมนู Serial Monitor 
+ Serial.println(MoistureValue);
+ /*Serial.println("Analog Value : "); // แสดง์ค่าความชื้นออกหน้าจอคอมพิวเตอร์ผ่านเมนู Serial Monitor 
+ Serial.println(sensorValue);*/
+
+ if (MoistureValue > MoistureHighLimit) { // กรณีหากความชื้นมากกว่าค่าที่กำหนด 
+   LINE.notify("ความชื้นสูงกว่าที่กำหนด");
+   digitalWrite(LED1, HIGH); // LED สีเขียวแสดงความชื้นสูง
+   Widgetled2.on (); // Widget LED สีเขียวที่แสดงบนแอพ
+   Serial.println("ความชื้นสูง เปิดไฟ");
+ }
+ else {
+   digitalWrite(LED1, LOW);
+   Widgetled2.off ();
+   Serial.println("ความชื้นปกติ ปิดไฟ");
+ }
+
+
+
+ if (MoistureValue < MoistureLowLimit) { // กรณีหากความชื้นต่ำกว่าค่าที่กำหนด ให้สั่งเปิดปั๊มน้ำ
+   LINE.notify("ความชื้นต่ำกว่าที่กำหนด เปิดปั๊มน้ำ"); 
+   digitalWrite(Relay1, LOW);
+   digitalWrite(LED2, HIGH); // LED สีแดงแสดงความชื้นต่ำ
+   Widgetled1.on (); // Widget LED สีแดงที่แสดงบนแอพ
+   Serial.println("ความชื้นต่ำ เปิดปั๊มน้ำ");
+ }
+ else {
+   digitalWrite(Relay1, HIGH); // ถ้าไม่ใช่ให้ปิด
+   digitalWrite(LED2, LOW);
+   Widgetled1.off ();
+   Serial.println("ความชื้นปกติ ปิดปั๊มน้ำ");
+ }
+ 
+}
+
+
+
+BLYNK_WRITE(V3) 
+{
+  MoistureLowLimit = param.asInt(); //  รับค่าความชื้นต่ำสุดที่ต้องการควบคุมจาก Widget Step H
+  Serial.println("MoistureLowLimit;");
+  Serial.println(MoistureLowLimit);
+}
+
+
+BLYNK_WRITE(V4) 
+{
+  MoistureHighLimit = param.asInt(); //  รับค่าความชื้นสูงสุดที่ต้องการควบคุมจาก Widget Step H
+  Serial.println("MoistureHighLimit;");
+  Serial.println(MoistureHighLimit);
+}
+
+void loop() 
+{
+ Blynk.run(); 
+ timer.run(); // เพิ่ม loop ตัวควบคุมเวลาการทำงานของฟังชั่น
+}
